@@ -1,0 +1,14 @@
+# Ignore virtual environments
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore AWS credentials
+*.env
+*.txt
+
+# Ignore system-specific files
+.DS_Store
+Thumbs.db
