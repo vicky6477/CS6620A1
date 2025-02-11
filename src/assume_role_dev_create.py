@@ -3,6 +3,10 @@ from config import AWS_ACCOUNT_ID
 
 sts = boto3.client('sts')
 
+# Verify the current user
+caller_identity = sts.get_caller_identity()
+print(f"Current IAM User: {caller_identity['Arn']}")
+
 # Assume Dev role
 assumed_role = sts.assume_role(
     RoleArn=f"arn:aws:iam::{AWS_ACCOUNT_ID}:role/Dev",
@@ -36,6 +40,6 @@ print("assignment2.txt uploaded successfully.")
 
 
 # Upload image
-with open("data/recording1.jpg", "rb") as img:
+with open("../data/recording1.jpg", "rb") as img:
     s3.put_object(Bucket=bucket_name, Key="recording1.jpg", Body=img)
     print(f"recording1.jpg uploaded successfully.")

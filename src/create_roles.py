@@ -1,58 +1,78 @@
 import boto3
 import json
-from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_ACCOUNT_ID
+import os
 
-iam = boto3.client('iam', 
-                    aws_access_key_id=AWS_ACCESS_KEY_ID, 
-                    aws_secret_access_key=AWS_SECRET_ACCESS_KEY, 
-                    region_name=AWS_REGION)
+iam = boto3.client('iam')
+sts = boto3.client('sts')
 
-def create_role(role_name, policy):
-    try:
-        # Create IAM role
-        role = iam.create_role(
-            RoleName=role_name,
-            AssumeRolePolicyDocument=json.dumps({
-                'Version': '2012-10-17',
-                'Statement': [{
-                    'Effect': 'Allow',
-                    'Principal': {'AWS': f'arn:aws:iam::{AWS_ACCOUNT_ID}:root'},
-                    'Action': 'sts:AssumeRole'
-                }]
-            })
-        )
-        print(f"Role {role_name} created successfully.")
+# Retrieve AWS Account ID dynamically
+AWS_ACCOUNT_ID = sts.get_caller_identity()["Account"]
 
-        # Attach policy to role
-        iam.put_role_policy(
-            RoleName=role_name,
-            PolicyName=f"{role_name}Policy",
-            PolicyDocument=json.dumps(policy)
-        )
-        print(f"Policy attached to role {role_name}.")
-    except Exception as e:
-        print(f"Failed to create role {role_name}: {e}")
-
-# Dev role with full S3 access
-dev_policy = {
-    'Version': '2012-10-17',
-    'Statement': [{
-        'Effect': 'Allow',
-        'Action': 's3:*',
-        'Resource': '*'
-    }]
+# Dev role Trust Policy
+dev_trust_policy = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+             "Principal": {
+                "AWS": f"arn:aws:iam::{AWS_ACCOUNT_ID}:user/vicky"
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
 }
 
-# User role with read-only S3 access
+# create Dev role
+iam.create_role(
+    RoleName="Dev",
+    AssumeRolePolicyDocument=json.dumps(dev_trust_policy)
+)
+
+# attach AmazonS3FullAccess policy to Dev role
+iam.attach_role_policy(
+    RoleName="Dev",
+    PolicyArn="arn:aws:iam::aws:policy/AmazonS3FullAccess"
+)
+
+# User role Trust Policy    
+user_trust_policy = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+             "Principal": {
+                "AWS": f"arn:aws:iam::{AWS_ACCOUNT_ID}:user/vicky"
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
+}
+
+# create User role
+iam.create_role(
+    RoleName="User",
+    AssumeRolePolicyDocument=json.dumps(user_trust_policy)
+)
+
+# User role only has read access to S3
 user_policy = {
-    'Version': '2012-10-17',
-    'Statement': [{
-        'Effect': 'Allow',
-        'Action': ['s3:ListBucket', 's3:GetObject'],
-        'Resource': '*'
-    }]
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetObject"
+            ],
+            "Resource": "*"
+        }
+    ]
 }
 
-# Create roles automatically
-create_role("Dev", dev_policy)
-create_role("User", user_policy)
+iam.put_role_policy(
+    RoleName="User",
+    PolicyName="UserS3ReadOnly",
+    PolicyDocument=json.dumps(user_policy)
+)
+
+print("Dev and User IAM roles created successfully.")

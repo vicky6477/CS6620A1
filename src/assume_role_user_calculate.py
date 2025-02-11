@@ -3,6 +3,10 @@ from config import AWS_ACCOUNT_ID
 
 sts = boto3.client('sts')
 
+# Verify the current user
+caller_identity = sts.get_caller_identity()
+print(f"Current IAM User: {caller_identity['Arn']}")
+
 # Assume User role
 assumed_user_role = sts.assume_role(
     RoleArn=f"arn:aws:iam::{AWS_ACCOUNT_ID}:role/User",
